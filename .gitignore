@@ -165,10 +165,12 @@ cython_debug/
 # program specific folders
 input/
 output/
+archive/
 
 # csv and gpx are created do not add
 *.csv
 *.gpx
+*.nc
 
 # specific file to ignore
 scratch_temp.py
