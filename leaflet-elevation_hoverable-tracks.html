@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>leaflet-elevation.js</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+	<link rel="dns-prefetch" href="https://tile.opentopomap.org">
+	<link rel="dns-prefetch preconnect" href="https://unpkg.com" />
+	<link rel="preload" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" as="script">
+	<link rel="preload" href="https://unpkg.com/leaflet-ui@0.6.0/dist/leaflet-ui.js" as="script">
+	
+	<style>@import '../libs/fullpage.css';</style>
+
+	<!-- leaflet-ui -->
+	<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+	<script src="https://unpkg.com/leaflet-ui@0.6.0/dist/leaflet-ui.js"></script>
+
+	<style>
+		.leaflet-right .leaflet-control-layers-list {
+			max-width: 250px;
+			max-height: 25vh;
+			overflow: auto;
+		}
+
+		.leaflet-tooltip {
+			font-weight: 700;
+		}
+
+		.chart-placeholder {
+			min-height: 20px;
+			text-align: center;
+			font-family: "Lucida Grande", "Lucida Sans Unicode", Verdana, Arial, Helvetica, sans-serif;
+			font-style: italic;
+			opacity: 0.6;
+			font-size: 0.9rem;
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="map" class="leaflet-map"></div>
+	
+	<div id="elevation-div" class="leaflet-control elevation"><p class="chart-placeholder">move mouse over a track...</p></div>
+
+	<script>
+		let opts = {
+			map: {
+				center: [44.636, -124.0959],
+				zoom: 5,
+				mapTypeId: 'topo',
+				fullscreenControl: false,
+				searchControl: false,
+				loadingControl: false,
+				layersControl: false,
+				plugins: [
+
+					"d3@7.8.4/dist/d3.min.js",
+					"@tmcw/togeojson@5.6.2/dist/togeojson.umd.js",
+					"leaflet-geometryutil@0.9.3/src/leaflet.geometryutil.js",
+					"leaflet-almostover@1.0.1/src/leaflet.almostover.js",
+					"../libs/L.Geoserver.js",
+					"../libs/leaflet-distance-marker.css",
+				    "../libs/leaflet-distance-marker.js",
+					"../dist/leaflet-elevation.css",
+					"../dist/leaflet-elevation.js",
+					"../libs/leaflet-gpxgroup.js",
+				],
+			},
+			points: {
+				icon: {
+					iconUrl: '../images/elevation-poi.png',
+					iconSize: [12, 12],
+				},
+			},
+			elevation: {
+				theme: "yellow-theme",
+				detached: true,
+				elevationDiv: '#elevation-div',
+				followMarker: true,
+				zFollow: 15,
+				legend: false,
+			},
+		};
+
+		let tracks = [
+		    // these are the new tracks built with backend python.
+			// each track is based on latitude 
+			// for simplicity only 8 tracks were done
+			// for granularity tracks can be broken down further
+			// 40 -> 40.5 or 40.2 or 40.1
+			"tracks_2/track_40.kml",
+			"tracks_2/track_41.kml",
+			"tracks_2/track_42.kml",
+			"tracks_2/track_43.kml",
+			"tracks_2/track_44.kml",
+			"tracks_2/track_45.kml",
+			"tracks_2/track_46.kml",
+			"tracks_2/track_47.kml",
+		];
+        
+		// some simple points to give relational reference
+		let points = [
+			{latlng:[39.4450, -123.7996], name:"Fort Bragg"},
+			{latlng:[47.0347, -122.9035], name:"Olympia"},
+			{latlng:[48.3409, -124.6321], name:"Neah Bay"},
+			{latlng:[46.1825, -123.8193], name:"Astoria"},
+			{latlng:[43.3628, -124.2236], name:"Coos Bay"},
+			{latlng:[41.7685, -124.2284], name:"Cresent City"},
+			{latlng:[40.5603, -122.419], name:"Ridgeview"},
+		];
+
+		let map = L.map('map', opts.map);
+		let routes;
+
+		map.on('plugins_loaded', function(e) {
+
+			routes = L.gpxGroup(tracks, {
+				points: points,
+				points_options: opts.points,
+				elevation: true,
+				elevation_options: opts.elevation,
+				legend: true,
+				distanceMarkers: true,
+				position: 'topleft',
+			});
+
+			map.on('eledata_added eledata_clear', ({type}) => {
+				let p = document.querySelector(".chart-placeholder");
+				if (p) {
+					p.style.display = type =='eledata_added' ? 'none' : '';
+				}
+			});
+
+			routes.addTo(map);
+
+			map.attributionControl.addAttribution('Map Data: &copy; <a href="https://github.com/adoroszlai">Attila Doroszlai</a> (<a href="https://github.com/adoroszlai/joebed/blob/gh-pages/LICENSE.md">MIT License</a>)');
+
+		});
+		
+let basemaps = {
+  gebco: L.tileLayer.wms('https://www.gebco.net/data_and_products/gebco_web_services/2019/mapserv?', {layers: 'GEBCO_2019_Grid',       attribution: 'GEBCO Compilation Group (2020)'}),
+  StreetView: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',  {attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}),
+  Topography: L.tileLayer.wms('http://ows.mundialis.de/services/service?',   {layers: 'TOPO-WMS'}),
+  Places: L.tileLayer.wms('http://ows.mundialis.de/services/service?', {layers: 'OSM-Overlay-WMS'}),
+  
+  Oregon: L.tileLayer.wms('http://localhost:8060/geoserver/wms',
+               {layers: 'term_project:gebco_2023_n48.0_s40.0_w-135.0_e-123.0'})
+};
+
+// base maps were under legend this required a move. 
+//L.control.layers(basemaps).addTo(map);
+L.control.layers(null, basemaps, {position:'topleft'}).addTo(map);
+
+map.zoomControl.remove(); 
+L.control.zoom({
+    position: 'bottomright'
+}).addTo(map);
+
+basemaps.gebco.addTo(map);
+	</script>
+<!--
+ <a href="https://github.com/Raruto/leaflet-elevation" class="view-on-github" style="position: fixed;top: 10px;left: calc(50% - 60px);z-index: 9999;"> <img alt="View on Github" src="https://raruto.github.io/img/view-on-github.png" title="View on Github" width="163"> </a>
+This is a modification of Raruto's code ... major credit goes to him
+
+-->
+
+</body>
+
+</html>
